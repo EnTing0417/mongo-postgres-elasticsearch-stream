@@ -30,40 +30,62 @@ MongoDB + Postgres → Debezium Connectors →  Kafka Topics
  <code>docker-compose up - d</code>
  <p> To run all the docker images required for this project. </p>
 
-**Step 2: Add Test Data to Mongo**
+**Step 2: Register Debezium connectors**
+
+<p> Register to connect with mongo database</p>
+<code>curl -X POST http://localhost:18084/connectors \
+-H "Content-Type: application/json" \
+-d @mongo-source.json</code>
+
+
+<p> Register to connect with Postgres database</p>
+<code>curl -X POST http://localhost:18084/connectors \
+-H "Content-Type: application/json" \
+-d @postgres-source.json</code>
+
+**Ensure connectors are active**
+ <code> curl -s http://localhost:18084/connectors </code>
+
+ <p>Expected output:</p>
+<code> ["postgres-source","mongo-source"] </code>
+
+**Ensure Kafka topics are created automatically**
+<code> docker exec -it kafka kafka-topics --bootstrap-server localhost:9092 --list</code>
+
+**Step 3: Add Test Data to Mongo**
 
 * Execute -docker commands under WSL terminal.
 
 **Connect to MongoDB shell :**
 
- <code> docker exec -it mongo mongo </code>
+ <code> docker exec -it mongo mongosh </code>
 
 **Switch to your database:**
 
-<code> use inventory_db </code>
+<code> use inventory </code>
 
 **Insert sample documents:**
 
- <code> db.inventory.insertMany([
-  { _id: 1, name: "Item A", quantity: 100, category: "Electronics" },
-  { _id: 2, name: "Item B", quantity: 50, category: "Books" },
-  { _id: 3, name: "Item C", quantity: 200, category: "Clothing" }
+ <code> db.customers.insertMany([
+  { _id: 1, name: "Alice" },
+  { _id: 2, name: "Bob" },
+  { _id: 3, name: "Calvin" }
 ])
 </code>
 
 **Verify insertion:**
 
- <code> db.inventory.find().pretty() </code>
+ <code> db.customers.find().pretty() </code>
 
  **Exit terminal:**
 
  <code> exit </code>
 
-**Step 2: Add Test Data to Postgres**
+**Step 4: Add Test Data to Postgres**
 
 **Connect to Postgres shell :**
 
- <code> docker exec -it postgres psql -U postgres -d inventory_db</code>
+ <code> docker exec -it postgres psql -U postgres -d inventory</code>
 
 **Create a sample table:**
 
@@ -88,27 +110,29 @@ MongoDB + Postgres → Debezium Connectors →  Kafka Topics
 
   **Exit terminal:**
 
- <code> /q </code>
+ <code> \q </code>
 
 ## How to check Kafka real-time messages
 
 * Check mongo database:
 
-<code> docker exec -it kafka \
+<code> 
+docker exec -it kafka \
 kafka-console-consumer --bootstrap-server localhost:9092 \
---topic mongo.inventory.customers --from-beginning</code>
+--topic mongo.inventory.customers --from-beginning
+</code>
 
 * Check postgres database:
 
 <code> docker exec -it kafka \
 kafka-console-consumer --bootstrap-server localhost:9092 \
---topic postgres.public.customers --from-beginning</code>
+--topic postgres.public.inventory --from-beginning</code>
 
-## How to list all connectors
+## How to restart all docker containers 
 
-*run in bash terminal*
+*run in wsl terminal*
 
- <code> curl -s http://localhost:8083/connectors</code>
+ <code> docker rm -f $(docker ps -aq) && docker rmi -f $(docker images -q) && docker volume prune -f && docker network prune -f </code>
 
 
 

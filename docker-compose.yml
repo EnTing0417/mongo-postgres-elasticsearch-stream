@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   # --------------------
   # Zookeeper
@@ -20,14 +22,10 @@ services:
     hostname: kafka
     ports:
       - "9092:9092"
-      - "29092:29092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
   # --------------------
@@ -46,60 +44,27 @@ services:
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
 
   # --------------------
-  # Kafka Connect (with Debezium connectors)
+  # Kafka Connect (Debezium)
   # --------------------
   kafka-connect:
-    image: confluentinc/cp-kafka-connect:7.5.0
+    image: debezium/connect:2.2
     container_name: kafka-connect
     depends_on:
-      - kafka
-      - schema-registry
+     - kafka
     ports:
-      - "18083:8083"
+      - "18084:8083"
     environment:
-      CONNECT_BOOTSTRAP_SERVERS: kafka:9092
-      CONNECT_REST_PORT: 8083
-      CONNECT_GROUP_ID: "connect-cluster"
-      CONNECT_CONFIG_STORAGE_TOPIC: "connect-configs"
-      CONNECT_OFFSET_STORAGE_TOPIC: "connect-offsets"
-      CONNECT_STATUS_STORAGE_TOPIC: "connect-status"
-      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
-      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
-      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
-      CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
-      CONNECT_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
-      CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
-      CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
-      CONNECT_REST_ADVERTISED_HOST_NAME: "kafka-connect"
-      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
-    volumes:
-      - ./kafka-connect-plugins:/usr/share/confluent-hub-components
-    command:
-    - bash
-    - -c
-    - |
-      confluent-hub install --no-prompt confluentinc/kafka-connect-elasticsearch:14.0.0 &&
-      /etc/confluent/docker/run
-
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: my_connect_configs
+      OFFSET_STORAGE_TOPIC: my_connect_offsets
+      STATUS_STORAGE_TOPIC: my_connect_statuses
+      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
   # --------------------
-  # ksqlDB
-  # --------------------
-  ksqldb:
-    image: confluentinc/cp-ksqldb-server:7.5.0
-    container_name: ksqldb
-    depends_on:
-      - kafka
-      - schema-registry
-    ports:
-      - "18088:8088"
-    environment:
-      KSQL_BOOTSTRAP_SERVERS: kafka:9092
-      KSQL_KSQL_SCHEMA_REGISTRY_URL: http://schema-registry:8081
-      KSQL_KSQL_CONNECT_URL: http://kafka-connect:8083
-      KSQL_LISTENERS: http://0.0.0.0:8088
-
-  # --------------------
-  # PostgreSQL (for Debezium CDC)
+  # PostgreSQL
   # --------------------
   postgres:
     image: debezium/postgres:15
@@ -112,7 +77,7 @@ services:
       POSTGRES_DB: inventory
 
   # --------------------
-  # MongoDB Replica Set (for Debezium CDC)
+  # MongoDB Replica Set
   # --------------------
   mongo:
     image: mongo:6.0
@@ -142,6 +107,10 @@ services:
         })
         EOF
       "
+
+  # --------------------
+  # Elasticsearch
+  # --------------------
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
     container_name: elasticsearch
@@ -155,7 +124,6 @@ services:
       - "9300:9300"
     volumes:
       - es_data:/usr/share/elasticsearch/data
-
 
 volumes:
   es_data:

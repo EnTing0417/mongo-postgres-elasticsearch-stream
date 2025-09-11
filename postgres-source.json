@@ -10,6 +10,6 @@
     "database.dbname": "inventory",
     "topic.prefix": "postgres",
     "schema.include.list": "public",
-    "table.include.list": "public.customers"
+    "table.include.list": "public.inventory"
   }
 }
